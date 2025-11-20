@@ -1,0 +1,97 @@
+#!/bin/bash
+function gaps(){ # fill gaps in county totals
+    # Run the following using gurobi environment: source ../scripts/set_env.sh
+    python ../scripts/fill_gaps.py
+    #python ../scripts/gaps_totals.py
+}
+
+## function gaps_by_farmsize(){ # fill gaps in farmsize
+##     # Run the following using micromamba environment: micromamba activate gpd
+##     python ../scripts/gaps_county_by_farmsize.py
+## }
+
+function egf2c(){ # example farm to cell assignment
+    python ../scripts/farms_to_cells.py -s 18 -c 1 -t ckn-layers
+    exit
+    python ../scripts/farms_to_cells.py -s 1 -c 123 -t cattle
+    exit
+    python ../scripts/farms_to_cells.py -s 12 -c 37 -t cattle
+    exit
+    #python ../scripts/farms_to_cells.py -s 2 -c 10 -t hogs
+    #python ../scripts/farms_to_cells.py -s 51 -c 3 -t ckn-layers
+    #python ../scripts/farms_to_cells.py -s 51 -c 3 -t cattle
+    #python ../scripts/farms_to_cells.py -s 51 -c 3 -t chukars
+    #python ../scripts/farms_to_cells.py -s 51 -c 3 -t pigeons
+    #python ../scripts/farms_to_cells.py -s 5 -c 51 -t cattle
+    #python ../scripts/farms_to_cells.py -s 51 -c 3 -t sheep
+    #python ../scripts/farms_to_cells.py -s 5 -c 51 -t hogs
+    #python ../scripts/farms_to_cells.py -s 101 -c 75 -t cattle
+    #python ../scripts/farms_to_cells.py -s 43 -c 18 -t cattle
+    #python ../scripts/farms_to_cells.py -s 2 -c 10 -t cattle
+    #python ../scripts/farms_to_cells.py -s 6 -c 107 -t cattle
+    #python ../scripts/farms_to_cells.py -s 2 -c 110 -t cattle
+    python ../scripts/farms_to_cells.py -s 5 -c 111 -t cattle
+    exit
+    python ../scripts/farms_to_cells.py -s 45 -c 43 -t cattle
+}
+
+function instances(){ # generate livestock-county instances. "run.sh" is created.
+    python ../scripts/generate_instances.py
+}
+
+function status(){
+    tail -q -n1 log_* > .status.logs
+    num_procs=`wc -l .status.logs | sed -e 's/ .*//'`
+    echo Number of successful assignments: `grep Done .status.logs | wc -l`/$num_procs
+    echo Complete list in ./status
+    tail -n1 log_* > .status.temp
+    awk "NR%3==1" .status.temp > .status.file
+    awk "NR%3==2" .status.temp > .status.status
+    paste .status.file .status.status | sed -e '/Done/d' > status
+}
+
+function collect(){
+    python ../scripts/collect_results.py
+}
+
+function upres(){
+    mv stats_farms_to_cells.csv.zip ../results/
+    mv farms_to_cells.csv.zip ../results/
+    mv stats_make_feasible.csv ../results/
+    mv agcensus_filled_gaps.csv.zip ../results/
+    mv stats_gaps_county_by_farmsize.csv ../results/
+    mv stats_gaps_totals_state.csv ../results/
+    mv stats_gaps_totals_county_totals.csv ../results/  
+    mv stats_gaps_totals_state_farmsize.csv ../results/
+    mv birds.png ../results/
+}
+
+function clean(){
+    rm log_*
+    rm farms_to_cells*
+    rm stats_*
+}
+
+function tests(){ # Tests
+    ## echo cattle testing instance: Albemarle
+    ## python ../scripts/farms_to_cells.py -s 51 -c 3 -t cattle
+    echo ckn-layers testing instance
+    python ../scripts/farms_to_cells.py -s 1 -c 3 -t ckn-layers
+    echo poultry-other testing instance
+    python ../scripts/farms_to_cells.py -s 55 -c 139 -t poultry-other
+    echo Missing Rhode Island cells
+    python ../scripts/farms_to_cells.py -s 44 -c 1 -t cattle
+    echo Infeasible instances adjusted
+    python ../scripts/farms_to_cells.py -s 4 -c 27 -t cattle
+    echo "Fi[i] is 0 for some i"
+    python ../scripts/farms_to_cells.py -s 5 -c 17 -t cattle
+    echo "Issue with non-binary x"
+    python ../scripts/farms_to_cells.py -s 12 -c 117 -t cattle
+}
+
+if [[ $# == 0 ]]; then
+   echo "Here are the options:"
+   grep "^function" $BASH_SOURCE | sed -e 's/function/  /' -e 's/[(){]//g' -e '/IGNORE/d'
+else
+   eval $1 $2
+fi
